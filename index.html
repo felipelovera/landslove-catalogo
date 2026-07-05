@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landslove - Catalogo de Precios</title>
+<style>
+:root{
+--cream:#f6efdd;
+--cream-dark:#efe4c8;
+--brown-dark:#2e1d10;
+--brown:#5c3a22;
+--olive:#7c8c55;
+--maroon:#6d1f2b;
+--tan:#c9a668;
+--card-bg:#ffffff;
+}
+*{box-sizing:border-box;}
+body{
+margin:0;
+font-family:'Georgia','Times New Roman',serif;
+background:var(--cream);
+color:var(--brown-dark);
+}
+.app{max-width:1100px;margin:0 auto;padding:20px 20px 50px;}
+.app-header{
+position:sticky;top:0;z-index:5;
+background:var(--cream);
+padding-top:6px;
+padding-bottom:12px;
+margin-bottom:10px;
+border-bottom:1px solid var(--tan);
+text-align:center;
+}
+.app-header img.logo{width:56px;height:56px;object-fit:contain;margin-bottom:4px;}
+.app-header h1{font-size:24px;letter-spacing:3px;margin:2px 0 0;}
+.app-header p.tagline{margin:2px 0 14px;font-size:12px;color:var(--brown);font-family:Arial,sans-serif;letter-spacing:.5px;}
+.searchbar{
+display:flex;align-items:center;gap:8px;
+max-width:420px;margin:0 auto 14px;
+background:#fff;border:1px solid var(--tan);border-radius:24px;
+padding:8px 16px;
+}
+.searchbar input{
+border:none;outline:none;flex:1;font-size:14px;font-family:Arial,sans-serif;background:transparent;color:var(--brown-dark);
+}
+.searchbar svg{flex-shrink:0;opacity:.6;}
+.clear-btn{border:none;background:none;cursor:pointer;font-size:16px;color:var(--brown);opacity:.6;padding:0 2px;display:none;}
+.clear-btn.show{display:inline-block;}
+.filters{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;font-family:Arial,sans-serif;}
+.filters button{
+border:1px solid var(--tan);
+background:#fff;
+color:var(--brown-dark);
+border-radius:16px;
+padding:6px 16px;
+font-size:13px;
+cursor:pointer;
+}
+.filters button.active{background:var(--brown-dark);color:#fff;border-color:var(--brown-dark);}
+.section{margin-top:26px;}
+.section-head{
+display:flex;justify-content:space-between;align-items:baseline;
+border-bottom:2px solid var(--tan);
+padding-bottom:6px;margin-bottom:14px;
+}
+.section-head h2{margin:0;font-size:20px;color:var(--maroon);}
+.section-head .count{font-family:Arial,sans-serif;font-size:12px;color:var(--brown);opacity:.8;}
+.grid{
+display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;
+scroll-snap-type:x proximity;
+-webkit-overflow-scrolling:touch;
+}
+.card{
+scroll-snap-align:start;
+flex:0 0 210px;
+background:var(--card-bg);
+border-radius:10px;
+overflow:hidden;
+box-shadow:0 1px 4px rgba(46,29,16,.12);
+display:flex;flex-direction:column;
+}
+.card img{width:100%;height:210px;object-fit:cover;background:var(--cream-dark);display:block;}
+.card .info{padding:10px 12px 14px;font-family:Arial,sans-serif;}
+.badge{
+display:inline-block;background:var(--olive);color:#fff;
+font-size:10px;letter-spacing:.5px;text-transform:uppercase;
+padding:2px 8px;border-radius:10px;margin-bottom:6px;
+}
+.card .pres{font-size:13px;color:var(--brown-dark);margin:0 0 4px;}
+.card .pres b{font-weight:700;}
+.card .pvp{font-size:20px;font-weight:700;color:var(--maroon);margin:2px 0;}
+.card .pu{font-size:12px;color:var(--brown);opacity:.8;margin:0 0 4px;}
+.card .sku{font-size:11px;color:var(--brown);opacity:.6;}
+.empty{text-align:center;padding:60px 20px;font-family:Arial,sans-serif;color:var(--brown);}
+.footer-note{text-align:center;margin-top:40px;font-family:Arial,sans-serif;font-size:11px;color:var(--brown);opacity:.7;}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="app-header">
+<img class="logo" src="https://lh3.googleusercontent.com/d/1zm6CsSneKpOg0DKveJAH1NYL56IXQvrY=w300" alt="Landslove">
+<h1>LANDSLOVE</h1>
+<p class="tagline">CATALOGO DE PRECIOS PARA VENDEDORES</p>
+<div class="searchbar">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+<input id="searchInput" type="text" placeholder="Buscar por SKU o codigo de barras...">
+<button class="clear-btn" id="clearBtn">&times;</button>
+</div>
+<div class="filters" id="filtersEl">
+<button class="active" data-filter="__all__">Todas</button>
+</div>
+</div>
+<div id="content">
+<div class="empty">Cargando catalogo...</div>
+</div>
+<p class="footer-note">Precios sujetos a cambio sin previo aviso. Actualizado automaticamente desde la hoja de precios.</p>
+</div>
+<script>
+var SHEET_ID = '110DWRJdv46_W3I1D0pjypJQHVfoQBRPuJU6hMmcAO7M';
+var SHEET_NAME = 'Hoja 1';
+
+var allProducts = [];
+var activeFilter = '__all__';
+
+function formatCOP(n){
+if (typeof n !== 'number') return String(n || '');
+return '$' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function driveImageUrl(url){
+if(!url) return '';
+var m = url.match(/\/d\/([a-zA-Z0-9_-]+)\//);
+if(!m) return url;
+return 'https://lh3.googleusercontent.com/d/' + m[1] + '=w600';
+}
+
+function escapeHtml(str){
+return String(str)
+.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function handleGvizResponse(resp){
+try {
+var rows = resp.table.rows;
+allProducts = rows
+.filter(function(r){ return r.c && r.c[0] && r.c[0].v; })
+.map(function(r){
+var c = r.c;
+function val(i){ return (c[i] && c[i].v !== null) ? c[i].v : ''; }
+return {
+variedad: String(val(0) || ''),
+presentacion: String(val(1) || ''),
+gramos: val(2),
+referencia: String(val(3) || ''),
+pvp: formatCOP(val(4)),
+pu: formatCOP(val(5)),
+foto: String(val(6) || ''),
+sku: String(val(7) || ''),
+codigoBarras: String(val(8) || '')
+};
+});
+buildFilters(allProducts);
+applyFilters();
+} catch (e) {
+showError();
+console.error(e);
+}
+}
+
+function showError(){
+document.getElementById('content').innerHTML =
+'<div class="empty">No se pudo conectar con los datos del catalogo.</div>';
+}
+
+function loadData(){
+var script = document.createElement('script');
+var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq'
++ '?' + 'tqx=out:json;responseHandler:handleGvizResponse'
++ '&' + 'sheet=' + encodeURIComponent(SHEET_NAME);
+script.src = url;
+script.onerror = showError;
+document.body.appendChild(script);
+}
+
+function buildFilters(products){
+var varieties = [];
+products.forEach(function(p){
+if (p.variedad && varieties.indexOf(p.variedad) === -1) varieties.push(p.variedad);
+});
+var filtersEl = document.getElementById('filtersEl');
+filtersEl.innerHTML = '<button class="active" data-filter="__all__">Todas</button>' +
+varieties.map(function(v){
+return '<button data-filter="' + escapeHtml(v) + '">' + escapeHtml(v) + '</button>';
+}).join('');
+}
+
+function renderCatalog(products){
+var contentEl = document.getElementById('content');
+if (!products.length){
+contentEl.innerHTML = '<div class="empty">No se encontraron productos.</div>';
+return;
+}
+var groups = {};
+var order = [];
+products.forEach(function(p){
+if (!groups[p.variedad]){ groups[p.variedad] = []; order.push(p.variedad); }
+groups[p.variedad].push(p);
+});
+contentEl.innerHTML = order.map(function(variedad){
+var items = groups[variedad];
+var cards = items.map(function(p){
+var foto = driveImageUrl(p.foto);
+var searchBlob = [p.sku, p.codigoBarras, p.referencia, p.variedad].join(' ').toLowerCase();
+return (
+'<div class="card" data-search="' + escapeHtml(searchBlob) + '">' +
+(foto ? '<img src="' + escapeHtml(foto) + '" alt="' + escapeHtml(p.referencia) + '" loading="lazy">' : '') +
+'<div class="info">' +
+'<span class="badge">' + escapeHtml(p.variedad) + '</span>' +
+'<p class="pres"><b>' + escapeHtml(p.presentacion) + '</b> - ' + escapeHtml(p.gramos) + ' g</p>' +
+'<p class="pvp">' + escapeHtml(p.pvp) + '</p>' +
+'<p class="pu">' + escapeHtml(p.pu) + ' / g</p>' +
+'<p class="sku">SKU ' + escapeHtml(p.sku) + '</p>' +
+'</div></div>'
+);
+}).join('');
+return (
+'<div class="section" data-variedad="' + escapeHtml(variedad) + '">' +
+'<div class="section-head"><h2>' + escapeHtml(variedad) + '</h2>' +
+'<span class="count">' + items.length + ' presentaciones</span></div>' +
+'<div class="grid">' + cards + '</div>' +
+'</div>'
+);
+}).join('');
+}
+
+function applyFilters(){
+var query = document.getElementById('searchInput').value.trim().toLowerCase();
+var clearBtn = document.getElementById('clearBtn');
+clearBtn.classList.toggle('show', query.length > 0);
+var filtered = allProducts.filter(function(p){
+var matchesFilter = activeFilter === '__all__' || p.variedad === activeFilter;
+if (!matchesFilter) return false;
+if (!query) return true;
+var blob = [p.sku, p.codigoBarras, p.referencia, p.variedad].join(' ').toLowerCase();
+return blob.indexOf(query) > -1;
+});
+renderCatalog(filtered);
+}
+
+document.getElementById('filtersEl').addEventListener('click', function(e){
+var btn = e.target.closest('button');
+if (!btn) return;
+document.querySelectorAll('#filtersEl button').forEach(function(b){ b.classList.remove('active'); });
+btn.classList.add('active');
+activeFilter = btn.getAttribute('data-filter');
+applyFilters();
+});
+
+document.getElementById('searchInput').addEventListener('input', function(){
+if (this.value.trim() && activeFilter !== '__all__'){
+activeFilter = '__all__';
+document.querySelectorAll('#filtersEl button').forEach(function(b){
+b.classList.toggle('active', b.getAttribute('data-filter') === '__all__');
+});
+}
+applyFilters();
+});
+
+document.getElementById('clearBtn').addEventListener('click', function(){
+document.getElementById('searchInput').value = '';
+applyFilters();
+document.getElementById('searchInput').focus();
+});
+
+loadData();
+</script>
+</body>
+</html>
